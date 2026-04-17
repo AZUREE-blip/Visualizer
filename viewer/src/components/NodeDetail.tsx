@@ -24,8 +24,8 @@ export function NodeDetail({ nodeId, onClose, onAskClaude, pendingCount, isNarro
     setLoading(true);
     setBrief(null);
     fetch(`${API_BASE}/api/node?id=${encodeURIComponent(nodeId)}`)
-      .then(r => r.json())
-      .then(data => { setDetail(data); setLoading(false); })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.node) setDetail(data); setLoading(false); })
       .catch(() => setLoading(false));
 
     // Fetch the brief in parallel
@@ -79,7 +79,7 @@ export function NodeDetail({ nodeId, onClose, onAskClaude, pendingCount, isNarro
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'hsl(0 0% 90%)' }}>
-            {loading ? 'Loading\u2026' : detail?.node.label || nodeId}
+            {loading ? 'Loading\u2026' : detail?.node?.label || nodeId}
           </h3>
           <button
             onClick={onClose}
@@ -102,10 +102,10 @@ export function NodeDetail({ nodeId, onClose, onAskClaude, pendingCount, isNarro
 
             <FileBrief brief={brief} loading={briefLoading} />
 
-            {detail.node.exports.length > 0 && (
+            {(detail.node.exports || []).length > 0 && (
               <Section title="Exports">
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {detail.node.exports.slice(0, 8).map(exp => (
+                  {(detail.node.exports || []).slice(0, 8).map(exp => (
                     <span key={exp} style={{
                       background: 'hsl(0 0% 10%)',
                       padding: '2px 6px', borderRadius: '4px',
@@ -116,9 +116,9 @@ export function NodeDetail({ nodeId, onClose, onAskClaude, pendingCount, isNarro
                       {exp}
                     </span>
                   ))}
-                  {detail.node.exports.length > 8 && (
+                  {(detail.node.exports || []).length > 8 && (
                     <span style={{ fontSize: '10px', color: 'hsl(0 0% 40%)' }}>
-                      +{detail.node.exports.length - 8} more
+                      +{(detail.node.exports || []).length - 8} more
                     </span>
                   )}
                 </div>
@@ -235,7 +235,7 @@ export function NodeDetail({ nodeId, onClose, onAskClaude, pendingCount, isNarro
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'hsl(0 0% 90%)' }}>
-          {loading ? 'Loading\u2026' : detail?.node.label || nodeId}
+          {loading ? 'Loading\u2026' : detail?.node?.label || nodeId}
         </h3>
         <button
           onClick={onClose}
@@ -261,10 +261,10 @@ export function NodeDetail({ nodeId, onClose, onAskClaude, pendingCount, isNarro
 
           <FileBrief brief={brief} loading={briefLoading} />
 
-          {detail.node.exports.length > 0 && (
+          {(detail.node.exports || []).length > 0 && (
             <Section title="Exports">
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {detail.node.exports.map(exp => (
+                {(detail.node.exports || []).map(exp => (
                   <span key={exp} style={{
                     background: 'hsl(0 0% 10%)',
                     padding: '2px 6px', borderRadius: '4px',
