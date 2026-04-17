@@ -1,43 +1,35 @@
 ---
 name: visualize
-description: Open the codebase visualizer in the preview panel. Shows an interactive architecture diagram of the project. The visualizer server starts automatically via a SessionStart hook — this skill just opens the preview panel.
-allowed-tools: Bash(codebase-visualizer*) Bash(npx codebase-visualizer*) Bash(curl*) Bash(lsof*) Bash(kill*) Bash(node*)
+description: Visualize the current codebase as an interactive diagram in the preview panel. No setup needed — just run /visualize.
+allowed-tools: Bash(node*) Bash(lsof*) Bash(kill*) Bash(sleep*) preview_start preview_stop
 ---
 
-# Open Codebase Visualizer
+# Visualize Codebase
 
-The codebase visualizer server should already be running on port 3001 (started by the SessionStart hook). This skill opens it in the preview panel.
+Show an interactive architecture diagram in the preview panel.
 
 ## Steps
 
-### 1. Check if server is running
+### 1. Stop any existing visualizer
 
 ```bash
-curl -s http://localhost:3001/api/status
+lsof -ti:3001 | xargs kill -9 2>/dev/null; echo "ready"
 ```
 
-If the server is NOT running (curl fails), start it:
+Also stop any existing preview:
+
+Use the preview_stop tool if a preview is currently running.
+
+### 2. Analyze the codebase
+
+Run the prepare script. It analyzes the project, writes data to /tmp, and creates .claude/launch.json:
 
 ```bash
-codebase-visualizer || npx codebase-visualizer &
+node ${CLAUDE_SKILL_DIR}/../../bin/prepare.mjs
 ```
 
-Wait 5 seconds for analysis to complete.
+### 3. Open in preview panel
 
-### 2. Open in browser
+Use preview_start with configuration name "visualizer" to open the diagram in the preview panel.
 
-```bash
-open http://localhost:3001
-```
-
-This opens the interactive codebase diagram in the browser. The user places this window side-by-side with the chat.
-
-### 3. Done
-
-The visualizer is now visible. The user can:
-- Click nodes to see file details
-- Ask questions about files (requires ANTHROPIC_API_KEY in .env)
-- Search and filter by layer
-- Toggle between overview and detailed mode
-
-Keep the preview panel open for the rest of the session.
+Done — the user can now see and interact with the codebase diagram.

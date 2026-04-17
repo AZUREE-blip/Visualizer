@@ -104,7 +104,19 @@ ${marker}
   }
   console.log('Updated CLAUDE.md');
 
-  // 4. .env placeholder
+  // 4. Install /visualize skill into project
+  const skillDir = join(claudeDir, 'skills', 'visualize');
+  await mkdir(skillDir, { recursive: true });
+  const skillSrc = join(PKG_ROOT, 'skills', 'visualize', 'SKILL.md');
+  try {
+    const skillContent = await readFile(skillSrc, 'utf-8');
+    await writeFile(join(skillDir, 'SKILL.md'), skillContent);
+    console.log('Installed /visualize skill');
+  } catch (err) {
+    console.warn('Could not install skill:', err.message);
+  }
+
+  // 5. .env placeholder
   const envPath = join(cwd, '.env');
   try {
     await access(envPath);
