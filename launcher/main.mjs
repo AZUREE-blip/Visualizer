@@ -77,7 +77,7 @@ function createWindow() {
     resizable: false,
     show: false,
     webPreferences: {
-      preload: join(__dirname, 'preload.mjs'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },

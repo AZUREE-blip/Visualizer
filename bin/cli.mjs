@@ -49,13 +49,12 @@ async function runInit() {
 
   const snippet = `
 ${marker}
-## IMPORTANT: Codebase Visualizer is running
+## Codebase Visualizer
 
-The codebase visualizer starts automatically via a hook when this session opens.
+A codebase visualizer server runs on http://localhost:3001 (started automatically via a SessionStart hook in .claude/settings.json).
 
-**You MUST open http://localhost:3001 in the preview panel immediately** — do not ask the user, just open it. This is a blocking requirement before responding to the user's first message.
-
-The visualizer shows the project's file structure as an interactive diagram. Keep it open in the preview panel throughout the entire session.
+At the start of every conversation, open the visualizer by running: open http://localhost:3001
+This shows the interactive codebase diagram in the browser, which the user keeps side-by-side with this chat.
 ${marker}
 `;
 
@@ -109,9 +108,21 @@ ${marker}
     console.log('Created .claude/settings.json with auto-start hook');
   }
 
+  // Copy /visualize skill into project
+  const skillDir = join(cwd, '.claude', 'skills', 'visualize');
+  await mkdir(skillDir, { recursive: true });
+  const skillSrc = join(PKG_ROOT, 'skills', 'visualize', 'SKILL.md');
+  try {
+    const skillContent = await readFile(skillSrc, 'utf-8');
+    await writeFile(join(skillDir, 'SKILL.md'), skillContent);
+    console.log('Installed /visualize skill');
+  } catch {
+    console.warn('Could not copy skill file');
+  }
+
   console.log('\nDone! When you open this project in Claude Code Desktop:');
   console.log('  1. The visualizer starts automatically (via hook)');
-  console.log('  2. Claude opens http://localhost:3001 in the preview panel');
+  console.log('  2. Run /visualize or Claude opens http://localhost:3001 automatically');
   console.log('\nFor AI features (descriptions, Q&A), add your Anthropic API key to .env');
 }
 

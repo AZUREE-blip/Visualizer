@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "visualizer",
+      "command": "npm run dev",
+      "url": "http://localhost:5173?mode=preview",
+      "port": 5173,
+      "timeout": 10000
+    }
+  ]
+}

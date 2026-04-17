@@ -26,7 +26,7 @@
     },
     "files": [
       "main.mjs",
-      "preload.mjs",
+      "preload.cjs",
       "index.html",
       "tray-icon.png",
       "tray-icon@2x.png"
