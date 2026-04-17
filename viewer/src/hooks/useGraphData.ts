@@ -93,7 +93,8 @@ export function useGraphData(hiddenLayers: Set<LayerType>, searchQuery: string, 
 
     const rfNodes: Node[] = [];
     const rfEdges: Edge[] = [];
-    const edgeColor = { stroke: 'hsl(0 0% 25%)', strokeWidth: 1.5 };
+    const hierarchyEdge = { stroke: 'hsl(0 0% 20%)', strokeWidth: 1.5 };
+    const depEdge = { stroke: 'hsl(0 0% 35%)', strokeWidth: 1.5 };
 
     // Root project node
     const projectName = rawData.meta?.projectName || 'Project';
@@ -110,23 +111,10 @@ export function useGraphData(hiddenLayers: Set<LayerType>, searchQuery: string, 
       },
     });
 
-    // Module nodes with hierarchy edges
-    const moduleIds = new Set(modules.map(m => m.id));
-
-    function findParentModule(modPath: string): string {
-      const parts = modPath.split('/');
-      for (let i = parts.length - 1; i >= 1; i--) {
-        const parentPath = parts.slice(0, i).join('/');
-        const parentId = `module:${parentPath}`;
-        if (moduleIds.has(parentId)) return parentId;
-      }
-      return '__root__';
-    }
-
+    // Only modules — no individual files
     for (const [id, meta] of moduleMeta) {
       if (!isModuleVisible(id)) continue;
       const lc = getLayerColor(meta.layer);
-      const importance = meta.fileCount >= 5 ? 3 : meta.fileCount >= 2 ? 2 : 1;
 
       rfNodes.push({
         id,
@@ -140,24 +128,24 @@ export function useGraphData(hiddenLayers: Set<LayerType>, searchQuery: string, 
           dimmed: searchQuery ? !meta.labelMatches : false,
           linesOfCode: meta.linesOfCode,
           fileCount: meta.fileCount,
-          importance,
+          importance: meta.fileCount >= 5 ? 3 : 2,
         },
       });
 
-      // Hierarchy edge: parent → module
-      const parentId = findParentModule(meta.node.filePath);
+      // Hierarchy edge: root → module
       rfEdges.push({
-        id: `h-${parentId}-${id}`,
-        source: parentId,
+        id: `h-root-${id}`,
+        source: '__root__',
         target: id,
         type: 'smoothstep',
-        style: edgeColor,
+        style: hierarchyEdge,
         data: {},
       });
     }
 
-    // ALL files as individual nodes (not just ungrouped)
+    // Ungrouped files as single nodes (files not in any module)
     for (const f of files) {
+      if (fileToModule.has(f.id)) continue;
       if (!isFileVisible(f)) continue;
       const lc = getLayerColor(f.layer);
       rfNodes.push({
@@ -165,44 +153,46 @@ export function useGraphData(hiddenLayers: Set<LayerType>, searchQuery: string, 
         type: 'fileNode',
         position: { x: 0, y: 0 },
         data: {
-          ...f,
-          color: lc.primary,
-          layerColor: lc,
+          ...f, color: lc.primary, layerColor: lc,
           dimmed: searchQuery ? !f.label.toLowerCase().includes(searchLower) : false,
-          description: (f as any).description || '',
-          importance: 1,
+          description: (f as any).description || '', importance: 1,
         },
       });
-
-      // Hierarchy edge: module/root → file
-      const parentId = fileToModule.get(f.id) || '__root__';
-      if (parentId === '__root__' || rfNodes.some(n => n.id === parentId)) {
-        rfEdges.push({
-          id: `h-${parentId}-${f.id}`,
-          source: parentId,
-          target: f.id,
-          type: 'smoothstep',
-          style: edgeColor,
-          data: {},
-        });
-      }
+      rfEdges.push({
+        id: `h-root-${f.id}`,
+        source: '__root__',
+        target: f.id,
+        type: 'smoothstep',
+        style: hierarchyEdge,
+        data: {},
+      });
     }
 
-    // Dependency edges between files
+    // Inter-module dependency edges (max 2 per source node)
     const visibleIds = new Set(rfNodes.map(n => n.id));
+    const seenPairs = new Set<string>();
+    const edgesPerSource = new Map<string, number>();
+
     for (const e of rawData.edges) {
-      if (!visibleIds.has(e.source) || !visibleIds.has(e.target)) continue;
-      const sourceNode = rawData.nodes.find(n => n.id === e.source);
-      const sourceLayer = sourceNode?.layer || 'logic';
-      const lc = getLayerColor(sourceLayer);
+      const srcMod = fileToModule.get(e.source) || e.source;
+      const tgtMod = fileToModule.get(e.target) || e.target;
+      if (srcMod === tgtMod) continue;
+      if (!visibleIds.has(srcMod) || !visibleIds.has(tgtMod)) continue;
+      const key = `${srcMod}->${tgtMod}`;
+      if (seenPairs.has(key)) continue;
+      seenPairs.add(key);
+      const count = edgesPerSource.get(srcMod) || 0;
+      if (count >= 2) continue;
+      edgesPerSource.set(srcMod, count + 1);
+
       rfEdges.push({
-        id: `e-${e.source}-${e.target}`,
-        source: e.source,
-        target: e.target,
+        id: `dep-${key}`,
+        source: srcMod,
+        target: tgtMod,
         type: 'smoothstep',
-        style: { stroke: lc.edge, strokeWidth: 1.5 },
+        style: depEdge,
         animated: true,
-        data: { symbols: (e as any).symbols || [], edgeType: e.type, sourceLayer },
+        data: { edgeType: 'dependency' },
       });
     }
 
