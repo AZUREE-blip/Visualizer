@@ -67,10 +67,9 @@ async function runInit() {
     version: '0.0.1',
     configurations: [{
       name: 'visualizer',
-      command: `cd /tmp && node ${serveBin} ${tmpDataDir} ${viewerDir}`,
-      url: 'http://localhost:3001',
+      runtimeExecutable: 'bash',
+      runtimeArgs: ['-c', `cd /tmp && node ${serveBin} ${tmpDataDir} ${viewerDir}`],
       port: 3001,
-      timeout: 10000,
     }],
   };
 
@@ -108,8 +107,10 @@ ${marker}
   const skillDir = join(claudeDir, 'skills', 'visualize');
   await mkdir(skillDir, { recursive: true });
   const skillSrc = join(PKG_ROOT, 'skills', 'visualize', 'SKILL.md');
+  const prepareBin = join(PKG_ROOT, 'bin', 'prepare.mjs');
   try {
-    const skillContent = await readFile(skillSrc, 'utf-8');
+    let skillContent = await readFile(skillSrc, 'utf-8');
+    skillContent = skillContent.replace('__PREPARE_BIN__', prepareBin);
     await writeFile(join(skillDir, 'SKILL.md'), skillContent);
     console.log('Installed /visualize skill');
   } catch (err) {

@@ -35,10 +35,9 @@ try { existingLaunch = JSON.parse(await readFile(launchPath, 'utf-8')); } catch 
 const configs = (existingLaunch.configurations || []).filter(c => c.name !== 'visualizer');
 configs.push({
   name: 'visualizer',
-  command: `cd /tmp && node ${serveBin} ${tmpDataDir} ${viewerDir}`,
-  url: 'http://localhost:3001',
+  runtimeExecutable: 'bash',
+  runtimeArgs: ['-c', `cd /tmp && node ${serveBin} ${tmpDataDir} ${viewerDir}`],
   port: 3001,
-  timeout: 10000,
 });
 existingLaunch.version = '0.0.1';
 existingLaunch.configurations = configs;
