@@ -44,85 +44,68 @@ Get one at: https://console.anthropic.com/settings/keys
 
 async function runInit() {
   const cwd = process.cwd();
+  const claudeDir = join(cwd, '.claude');
+  await mkdir(claudeDir, { recursive: true });
+
+  // 1. Create .claude/launch.json — this is how Claude Code Desktop starts + previews the visualizer
+  const launchPath = join(claudeDir, 'launch.json');
+  const launchConfig = {
+    version: '0.0.1',
+    configurations: [{
+      name: 'visualizer',
+      command: 'codebase-visualizer',
+      url: 'http://localhost:3001',
+      port: 3001,
+      timeout: 15000,
+    }],
+  };
+
+  let existingLaunch = {};
+  try { existingLaunch = JSON.parse(await readFile(launchPath, 'utf-8')); } catch {}
+  const configs = existingLaunch.configurations || [];
+  if (!configs.some(c => c.name === 'visualizer')) {
+    configs.push(launchConfig.configurations[0]);
+    existingLaunch.version = existingLaunch.version || '0.0.1';
+    existingLaunch.configurations = configs;
+    await writeFile(launchPath, JSON.stringify(existingLaunch, null, 2));
+    console.log('Created .claude/launch.json (preview panel config)');
+  } else {
+    console.log('.claude/launch.json already has visualizer config');
+  }
+
+  // 2. Add CLAUDE.md instruction to use preview_start
   const claudeMdPath = join(cwd, 'CLAUDE.md');
   const marker = '<!-- codebase-visualizer -->';
-
   const snippet = `
 ${marker}
 ## Codebase Visualizer
 
-A codebase visualizer server runs on http://localhost:3001 (started automatically via a SessionStart hook in .claude/settings.json).
-
-At the start of every conversation, open the visualizer by running: open http://localhost:3001
-This shows the interactive codebase diagram in the browser, which the user keeps side-by-side with this chat.
+At the start of every conversation, start the visualizer in the preview panel using the "visualizer" launch configuration. This shows an interactive diagram of the codebase that the user can explore while chatting.
 ${marker}
 `;
 
   try {
     const existing = await readFile(claudeMdPath, 'utf-8');
-    if (existing.includes(marker)) {
-      console.log('CLAUDE.md already has visualizer instructions. Nothing to do.');
-      return;
+    if (!existing.includes(marker)) {
+      await writeFile(claudeMdPath, existing.trimEnd() + '\n' + snippet);
+      console.log('Added visualizer instructions to CLAUDE.md');
     }
-    await writeFile(claudeMdPath, existing.trimEnd() + '\n' + snippet);
-    console.log('Added visualizer instructions to existing CLAUDE.md');
   } catch {
     await writeFile(claudeMdPath, snippet.trimStart());
-    console.log('Created CLAUDE.md with visualizer instructions');
+    console.log('Created CLAUDE.md');
   }
 
-  // Create .env with placeholder if it doesn't exist
+  // 3. Create .env placeholder
   const envPath = join(cwd, '.env');
   try {
     await access(envPath);
   } catch {
     await writeFile(envPath, '# Get your key at https://console.anthropic.com/settings/keys\nANTHROPIC_API_KEY=\n');
-    console.log('Created .env — add your ANTHROPIC_API_KEY there for AI features');
+    console.log('Created .env — add your ANTHROPIC_API_KEY for AI features');
   }
 
-  // Create .claude/settings.json with SessionStart hook
-  const claudeDir = join(cwd, '.claude');
-  const settingsPath = join(claudeDir, 'settings.json');
-  await mkdir(claudeDir, { recursive: true });
-
-  const hookCommand = `codebase-visualizer || npx codebase-visualizer`;
-
-  let settings = {};
-  try {
-    settings = JSON.parse(await readFile(settingsPath, 'utf-8'));
-  } catch { /* no existing settings */ }
-
-  // Add hook if not already present
-  if (!settings.hooks?.SessionStart?.some(h => h.hooks?.some(hh => hh.command?.includes('codebase-visualizer')))) {
-    settings.hooks = settings.hooks || {};
-    settings.hooks.SessionStart = settings.hooks.SessionStart || [];
-    settings.hooks.SessionStart.push({
-      matcher: "",
-      hooks: [{
-        type: "command",
-        command: hookCommand,
-        async: true
-      }]
-    });
-    await writeFile(settingsPath, JSON.stringify(settings, null, 2));
-    console.log('Created .claude/settings.json with auto-start hook');
-  }
-
-  // Copy /visualize skill into project
-  const skillDir = join(cwd, '.claude', 'skills', 'visualize');
-  await mkdir(skillDir, { recursive: true });
-  const skillSrc = join(PKG_ROOT, 'skills', 'visualize', 'SKILL.md');
-  try {
-    const skillContent = await readFile(skillSrc, 'utf-8');
-    await writeFile(join(skillDir, 'SKILL.md'), skillContent);
-    console.log('Installed /visualize skill');
-  } catch {
-    console.warn('Could not copy skill file');
-  }
-
-  console.log('\nDone! When you open this project in Claude Code Desktop:');
-  console.log('  1. The visualizer starts automatically (via hook)');
-  console.log('  2. Run /visualize or Claude opens http://localhost:3001 automatically');
+  console.log('\nDone! Open this project in Claude Code Desktop and the');
+  console.log('visualizer will appear in the preview panel automatically.');
   console.log('\nFor AI features (descriptions, Q&A), add your Anthropic API key to .env');
 }
 
