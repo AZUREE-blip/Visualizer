@@ -47,32 +47,50 @@ async function runInit() {
   const claudeDir = join(cwd, '.claude');
   await mkdir(claudeDir, { recursive: true });
 
-  // 1. Register MCP server in .claude/settings.json
-  const settingsPath = join(claudeDir, 'settings.json');
-  let settings = {};
-  try { settings = JSON.parse(await readFile(settingsPath, 'utf-8')); } catch {}
+  const projectName = cwd.replace(/\//g, '-').replace(/^-/, '');
+  const tmpDataDir = join('/tmp', `codebase-visualizer-${projectName}`);
+  await mkdir(tmpDataDir, { recursive: true });
 
-  const mcpBin = join(PKG_ROOT, 'bin', 'mcp.mjs');
-  settings.mcpServers = settings.mcpServers || {};
-  if (!settings.mcpServers['codebase-visualizer']) {
-    settings.mcpServers['codebase-visualizer'] = {
-      command: 'node',
-      args: [mcpBin, cwd],
-    };
-    await writeFile(settingsPath, JSON.stringify(settings, null, 2));
-    console.log('Registered MCP server in .claude/settings.json');
-  } else {
-    console.log('MCP server already registered');
-  }
+  // 1. Analyze now and write graph.json to /tmp (sandbox-safe)
+  console.log('Analyzing codebase...');
+  const { analyze } = await import('../scripts/analyze.mjs');
+  const graph = await analyze(cwd);
+  await writeFile(join(tmpDataDir, 'graph.json'), JSON.stringify(graph, null, 2));
+  console.log(`Analysis complete: ${graph.nodes.length} nodes, ${graph.edges.length} edges`);
 
-  // 2. Add CLAUDE.md instruction
+  // 2. Create launch.json — preview panel starts a serve-only server reading from /tmp
+  const serveBin = join(PKG_ROOT, 'bin', 'serve.mjs');
+  const viewerDir = join(PKG_ROOT, 'viewer', 'dist');
+  const launchPath = join(claudeDir, 'launch.json');
+
+  const launchConfig = {
+    version: '0.0.1',
+    configurations: [{
+      name: 'visualizer',
+      command: `node ${serveBin} ${tmpDataDir} ${viewerDir}`,
+      url: 'http://localhost:3001',
+      port: 3001,
+      timeout: 10000,
+    }],
+  };
+
+  let existingLaunch = {};
+  try { existingLaunch = JSON.parse(await readFile(launchPath, 'utf-8')); } catch {}
+  const configs = (existingLaunch.configurations || []).filter(c => c.name !== 'visualizer');
+  configs.push(launchConfig.configurations[0]);
+  existingLaunch.version = '0.0.1';
+  existingLaunch.configurations = configs;
+  await writeFile(launchPath, JSON.stringify(existingLaunch, null, 2));
+  console.log('Created .claude/launch.json');
+
+  // 3. CLAUDE.md
   const claudeMdPath = join(cwd, 'CLAUDE.md');
   const marker = '<!-- codebase-visualizer -->';
   const snippet = `
 ${marker}
 ## Codebase Visualizer
 
-This project has a codebase-visualizer MCP server. At the start of every conversation, call the \`open_visualizer\` tool to start the interactive diagram, then open the returned URL in the preview panel.
+At the start of every conversation, start the "visualizer" preview configuration to show the interactive codebase diagram in the preview panel.
 ${marker}
 `;
 
@@ -80,14 +98,13 @@ ${marker}
     const existing = await readFile(claudeMdPath, 'utf-8');
     if (!existing.includes(marker)) {
       await writeFile(claudeMdPath, existing.trimEnd() + '\n' + snippet);
-      console.log('Added visualizer instructions to CLAUDE.md');
     }
   } catch {
     await writeFile(claudeMdPath, snippet.trimStart());
-    console.log('Created CLAUDE.md');
   }
+  console.log('Updated CLAUDE.md');
 
-  // 3. Create .env placeholder
+  // 4. .env placeholder
   const envPath = join(cwd, '.env');
   try {
     await access(envPath);
