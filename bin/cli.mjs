@@ -57,8 +57,7 @@ async function runInit() {
   if (!settings.mcpServers['codebase-visualizer']) {
     settings.mcpServers['codebase-visualizer'] = {
       command: 'node',
-      args: [mcpBin],
-      cwd: cwd,
+      args: [mcpBin, cwd],
     };
     await writeFile(settingsPath, JSON.stringify(settings, null, 2));
     console.log('Registered MCP server in .claude/settings.json');

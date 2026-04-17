@@ -19,6 +19,7 @@ import { execSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
+const PROJECT_DIR = process.argv[2] || '/tmp';
 
 let serverInstance = null;
 let serverPort = null;
@@ -36,7 +37,7 @@ mcp.tool(
     port: z.number().optional().describe('Port for the viewer server. Defaults to 3001.'),
   },
   async ({ path, port }) => {
-    const targetDir = resolve(path || process.cwd());
+    const targetDir = resolve(path || PROJECT_DIR);
     const usePort = port || 3001;
     const viewerDir = join(PKG_ROOT, 'viewer', 'dist');
     const dataDir = join(targetDir, '.visualizer');
@@ -94,7 +95,7 @@ mcp.tool(
     path: z.string().optional().describe('Project directory to analyze. Defaults to current working directory.'),
   },
   async ({ path }) => {
-    const targetDir = resolve(path || process.cwd());
+    const targetDir = resolve(path || PROJECT_DIR);
 
     try {
       const { analyze } = await import(join(PKG_ROOT, 'scripts', 'analyze.mjs'));
