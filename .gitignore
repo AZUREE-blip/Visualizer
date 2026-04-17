@@ -1,0 +1,8 @@
+node_modules/
+data/graph.json
+data/tts_cache/
+data/presentation.json
+.visualizer/
+.env
+.DS_Store
+*.tsbuildinfo

@@ -1,0 +1,52 @@
+{
+  "name": "codebase-visualizer",
+  "version": "0.1.0",
+  "description": "Visualize your codebase structure — designed for Claude Code Desktop's preview panel",
+  "type": "module",
+  "bin": {
+    "codebase-visualizer": "./bin/cli.mjs"
+  },
+  "workspaces": [
+    "viewer",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:viewer\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:viewer": "npm run dev --workspace=viewer",
+    "analyze": "node scripts/analyze.mjs",
+    "build": "npm run build --workspace=viewer",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "bin/",
+    "server/index.mjs",
+    "server/claude.mjs",
+    "server/package.json",
+    "scripts/analyze.mjs",
+    "viewer/dist/",
+    "package.json"
+  ],
+  "keywords": [
+    "codebase",
+    "visualizer",
+    "claude",
+    "claude-code",
+    "vibe-coding",
+    "architecture",
+    "diagram"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "chokidar": "^4.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "msedge-tts": "^2.0.4",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
