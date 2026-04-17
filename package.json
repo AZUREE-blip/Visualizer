@@ -24,6 +24,7 @@
     "server/claude.mjs",
     "server/package.json",
     "scripts/analyze.mjs",
+    "launcher/",
     "viewer/dist/",
     "package.json"
   ],

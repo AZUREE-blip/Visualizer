@@ -11,6 +11,8 @@ const command = process.argv[2] || 'start';
 
 if (command === 'init') {
   await runInit();
+} else if (command === 'launch') {
+  await runLaunch();
 } else if (command === 'start' || command === '.') {
   await runStart();
 } else if (command === 'help' || command === '--help' || command === '-h') {
@@ -27,6 +29,7 @@ codebase-visualizer — Understand your codebase visually
 Usage:
   npx codebase-visualizer              Analyze current directory and start viewer
   npx codebase-visualizer [path]       Analyze a specific project directory
+  npx codebase-visualizer launch       Open the launcher GUI (pick folder, set API key)
   npx codebase-visualizer init         Add CLAUDE.md instructions for auto-opening in Claude Code
   npx codebase-visualizer help         Show this help
 
@@ -110,6 +113,10 @@ ${marker}
   console.log('  1. The visualizer starts automatically (via hook)');
   console.log('  2. Claude opens http://localhost:3001 in the preview panel');
   console.log('\nFor AI features (descriptions, Q&A), add your Anthropic API key to .env');
+}
+
+async function runLaunch() {
+  await import('../launcher/server.mjs');
 }
 
 async function runStart(targetPath) {

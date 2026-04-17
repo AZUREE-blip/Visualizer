@@ -6,3 +6,5 @@ data/presentation.json
 .env
 .DS_Store
 *.tsbuildinfo
+launcher/node_modules/
+launcher/dist/

@@ -1,0 +1,49 @@
+{
+  "name": "codebase-visualizer-app",
+  "version": "0.1.0",
+  "description": "Codebase Visualizer — menubar app",
+  "main": "main.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:dmg": "electron-builder --mac dmg"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.codebase-visualizer.app",
+    "productName": "Codebase Visualizer",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "icon.png",
+      "target": ["dmg", "zip"]
+    },
+    "files": [
+      "main.mjs",
+      "preload.mjs",
+      "index.html",
+      "tray-icon.png",
+      "tray-icon@2x.png"
+    ],
+    "extraResources": [
+      {
+        "from": "../server",
+        "to": "server"
+      },
+      {
+        "from": "../scripts",
+        "to": "scripts"
+      },
+      {
+        "from": "../viewer/dist",
+        "to": "viewer/dist"
+      }
+    ]
+  }
+}
