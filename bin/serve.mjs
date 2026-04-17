@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Minimal static server for the preview panel.
- * Reads pre-generated graph.json from a data dir (e.g. /tmp).
- * No project directory access needed — sandbox safe.
- *
- * Usage: node serve.mjs <dataDir> <viewerDir> [port]
+ * Zero-dependency static server for the preview panel.
+ * Uses only Node.js built-ins — no npm install needed.
  */
 
-import express from 'express';
+import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, extname } from 'node:path';
 
 const dataDir = process.argv[2];
 const viewerDir = process.argv[3];
@@ -21,39 +18,62 @@ if (!dataDir || !viewerDir) {
   process.exit(1);
 }
 
-const app = express();
+const MIME = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+};
 
-// Serve viewer static files
-app.use(express.static(viewerDir));
-
-// Serve graph data from /tmp
-app.get('/api/graph', async (_req, res) => {
+async function serveFile(res, filePath, contentType) {
   try {
-    const graph = JSON.parse(await readFile(join(dataDir, 'graph.json'), 'utf-8'));
-    res.json(graph);
+    const data = await readFile(filePath);
+    res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=3600' });
+    res.end(data);
   } catch {
-    res.status(404).json({ error: 'No graph data. Run codebase-visualizer init first.' });
+    return false;
   }
+  return true;
+}
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url, `http://localhost:${port}`);
+  const path = url.pathname;
+
+  // API: graph data from /tmp
+  if (path === '/api/graph') {
+    try {
+      const graph = await readFile(join(dataDir, 'graph.json'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(graph);
+    } catch {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end('{"error":"No graph data"}');
+    }
+    return;
+  }
+
+  // API stubs
+  if (path === '/api/status') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"watching":false}'); return; }
+  if (path === '/api/ai-status') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"available":false}'); return; }
+  if (path === '/api/snippets') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"snippets":[],"total":0}'); return; }
+  if (path === '/api/presentation') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"steps":[],"meta":{}}'); return; }
+  if (path.startsWith('/api/')) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end('{"error":"Not available in preview mode"}'); return; }
+
+  // Static files from viewer/dist
+  const ext = extname(path);
+  if (ext && MIME[ext]) {
+    const served = await serveFile(res, join(viewerDir, path), MIME[ext]);
+    if (served) return;
+  }
+
+  // SPA fallback: serve index.html
+  await serveFile(res, join(viewerDir, 'index.html'), 'text/html');
 });
 
-// Stub endpoints so the viewer doesn't error
-app.get('/api/status', (_req, res) => res.json({ watching: false, rootDir: null }));
-app.get('/api/ai-status', (_req, res) => res.json({ available: false, error: 'Preview mode' }));
-app.get('/api/node', (_req, res) => res.status(404).json({ error: 'Not available in preview mode' }));
-app.get('/api/node-brief', (_req, res) => res.status(404).json({ error: 'Not available in preview mode' }));
-app.get('/api/snippets', (_req, res) => res.json({ snippets: [], total: 0 }));
-app.get('/api/presentation', async (_req, res) => {
-  try {
-    const graph = JSON.parse(await readFile(join(dataDir, 'graph.json'), 'utf-8'));
-    res.json({ steps: [], meta: graph.meta });
-  } catch {
-    res.json({ steps: [], meta: {} });
-  }
-});
-
-// SPA fallback (Express 5 syntax)
-app.get('/{*path}', (_req, res) => res.sendFile(join(viewerDir, 'index.html')));
-
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Visualizer preview on http://localhost:${port}`);
 });
