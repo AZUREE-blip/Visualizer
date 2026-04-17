@@ -165,9 +165,23 @@ wss.on('connection', (ws) => {
       const deps = graph.edges.filter(e => e.source === nodeId).map(e => graph.nodes.find(n => n.id === e.target)).filter(Boolean);
       const dependents = graph.edges.filter(e => e.target === nodeId).map(e => graph.nodes.find(n => n.id === e.source)).filter(Boolean);
 
-      let context = `## File: ${node.filePath}\nType: ${node.type}, Layer: ${node.layer}, ${node.linesOfCode} lines\n`;
-      if (node.exports?.length) context += `Exports: ${node.exports.join(', ')}\n`;
-      if (node.snippet) context += `\n\`\`\`\n${node.snippet}\n\`\`\`\n`;
+      // Build context — for modules, aggregate child file snippets
+      let context = '';
+      if (node.type === 'module' && node.children?.length) {
+        const children = node.children.map(cid => graph.nodes.find(n => n.id === cid)).filter(Boolean);
+        context = `## Module: ${node.label} (${children.length} files)\n\n`;
+        for (const child of children.slice(0, 5)) {
+          context += `### ${child.filePath} (${child.type}, ${child.linesOfCode}L)\n`;
+          if (child.description) context += `${child.description}\n`;
+          if (child.exports?.length) context += `Exports: ${child.exports.join(', ')}\n`;
+          if (child.snippet) context += `\`\`\`\n${child.snippet.slice(0, 500)}\n\`\`\`\n`;
+          context += '\n';
+        }
+      } else {
+        context = `## File: ${node.filePath}\nType: ${node.type}, Layer: ${node.layer}, ${node.linesOfCode} lines\n`;
+        if (node.exports?.length) context += `Exports: ${node.exports.join(', ')}\n`;
+        if (node.snippet) context += `\n\`\`\`\n${node.snippet}\n\`\`\`\n`;
+      }
       if (deps.length) context += `\nDepends on: ${deps.map(d => d.label).join(', ')}`;
       if (dependents.length) context += `\nUsed by: ${dependents.map(d => d.label).join(', ')}`;
 
