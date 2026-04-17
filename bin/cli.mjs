@@ -67,7 +67,7 @@ async function runInit() {
     version: '0.0.1',
     configurations: [{
       name: 'visualizer',
-      command: `node ${serveBin} ${tmpDataDir} ${viewerDir}`,
+      command: `cd /tmp && node ${serveBin} ${tmpDataDir} ${viewerDir}`,
       url: 'http://localhost:3001',
       port: 3001,
       timeout: 10000,

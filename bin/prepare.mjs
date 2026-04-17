@@ -35,7 +35,7 @@ try { existingLaunch = JSON.parse(await readFile(launchPath, 'utf-8')); } catch 
 const configs = (existingLaunch.configurations || []).filter(c => c.name !== 'visualizer');
 configs.push({
   name: 'visualizer',
-  command: `node ${serveBin} ${tmpDataDir} ${viewerDir}`,
+  command: `cd /tmp && node ${serveBin} ${tmpDataDir} ${viewerDir}`,
   url: 'http://localhost:3001',
   port: 3001,
   timeout: 10000,
