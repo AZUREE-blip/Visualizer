@@ -47,40 +47,33 @@ async function runInit() {
   const claudeDir = join(cwd, '.claude');
   await mkdir(claudeDir, { recursive: true });
 
-  // 1. Create .claude/launch.json — this is how Claude Code Desktop starts + previews the visualizer
-  const launchPath = join(claudeDir, 'launch.json');
-  const launchConfig = {
-    version: '0.0.1',
-    configurations: [{
-      name: 'visualizer',
-      command: 'codebase-visualizer',
-      url: 'http://localhost:3001',
-      port: 3001,
-      timeout: 15000,
-    }],
-  };
+  // 1. Register MCP server in .claude/settings.json
+  const settingsPath = join(claudeDir, 'settings.json');
+  let settings = {};
+  try { settings = JSON.parse(await readFile(settingsPath, 'utf-8')); } catch {}
 
-  let existingLaunch = {};
-  try { existingLaunch = JSON.parse(await readFile(launchPath, 'utf-8')); } catch {}
-  const configs = existingLaunch.configurations || [];
-  if (!configs.some(c => c.name === 'visualizer')) {
-    configs.push(launchConfig.configurations[0]);
-    existingLaunch.version = existingLaunch.version || '0.0.1';
-    existingLaunch.configurations = configs;
-    await writeFile(launchPath, JSON.stringify(existingLaunch, null, 2));
-    console.log('Created .claude/launch.json (preview panel config)');
+  const mcpBin = join(PKG_ROOT, 'bin', 'mcp.mjs');
+  settings.mcpServers = settings.mcpServers || {};
+  if (!settings.mcpServers['codebase-visualizer']) {
+    settings.mcpServers['codebase-visualizer'] = {
+      command: 'node',
+      args: [mcpBin],
+      cwd: cwd,
+    };
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2));
+    console.log('Registered MCP server in .claude/settings.json');
   } else {
-    console.log('.claude/launch.json already has visualizer config');
+    console.log('MCP server already registered');
   }
 
-  // 2. Add CLAUDE.md instruction to use preview_start
+  // 2. Add CLAUDE.md instruction
   const claudeMdPath = join(cwd, 'CLAUDE.md');
   const marker = '<!-- codebase-visualizer -->';
   const snippet = `
 ${marker}
 ## Codebase Visualizer
 
-At the start of every conversation, start the visualizer in the preview panel using the "visualizer" launch configuration. This shows an interactive diagram of the codebase that the user can explore while chatting.
+This project has a codebase-visualizer MCP server. At the start of every conversation, call the \`open_visualizer\` tool to start the interactive diagram, then open the returned URL in the preview panel.
 ${marker}
 `;
 
