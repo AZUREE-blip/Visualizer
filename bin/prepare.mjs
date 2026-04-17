@@ -19,6 +19,19 @@ const tmpDataDir = join('/tmp', `codebase-visualizer-${projectName}`);
 const serveBin = join(PKG_ROOT, 'bin', 'serve.mjs');
 const viewerDir = join(PKG_ROOT, 'viewer', 'dist');
 
+// 0. Persist API key to /tmp so sandbox server can read it
+const envApiKey = process.env.ANTHROPIC_API_KEY;
+if (envApiKey) {
+  await writeFile('/tmp/codebase-visualizer-apikey', envApiKey);
+} else {
+  // Try reading from project .env
+  try {
+    const envFile = await readFile(join(cwd, '.env'), 'utf-8');
+    const match = envFile.match(/ANTHROPIC_API_KEY=(.+)/);
+    if (match?.[1]?.trim()) await writeFile('/tmp/codebase-visualizer-apikey', match[1].trim());
+  } catch {}
+}
+
 // 1. Analyze
 await mkdir(tmpDataDir, { recursive: true });
 const { analyze } = await import('../scripts/analyze.mjs');

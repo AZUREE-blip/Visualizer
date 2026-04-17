@@ -23,7 +23,15 @@ if (!dataDir || !viewerDir) {
 // --- Claude AI ---
 let ai = null;
 let aiModel = 'claude-sonnet-4-6';
-const apiKey = process.env.ANTHROPIC_API_KEY;
+let apiKey = process.env.ANTHROPIC_API_KEY;
+
+// Try reading key from /tmp (sandbox-safe) if not in env
+if (!apiKey) {
+  try {
+    apiKey = (await readFile('/tmp/codebase-visualizer-apikey', 'utf-8')).trim();
+  } catch {}
+}
+
 if (apiKey) {
   try { ai = new Anthropic({ apiKey }); } catch {}
 }
