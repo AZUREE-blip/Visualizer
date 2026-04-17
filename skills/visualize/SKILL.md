@@ -25,7 +25,7 @@ Use the preview_stop tool if a preview is currently running.
 Run the prepare script. It analyzes the project, writes data to /tmp, and creates .claude/launch.json:
 
 ```bash
-node __PREPARE_BIN__
+node __PREPARE_BIN__ || node ${CLAUDE_SKILL_DIR}/prepare.mjs
 ```
 
 ### 3. Open in preview panel

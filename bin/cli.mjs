@@ -109,9 +109,13 @@ ${marker}
   const skillSrc = join(PKG_ROOT, 'skills', 'visualize', 'SKILL.md');
   const prepareBin = join(PKG_ROOT, 'bin', 'prepare.mjs');
   try {
+    // Copy SKILL.md with absolute path baked in
     let skillContent = await readFile(skillSrc, 'utf-8');
     skillContent = skillContent.replace('__PREPARE_BIN__', prepareBin);
     await writeFile(join(skillDir, 'SKILL.md'), skillContent);
+    // Copy prepare.mjs into skill dir as fallback
+    const prepareContent = await readFile(prepareBin, 'utf-8');
+    await writeFile(join(skillDir, 'prepare.mjs'), prepareContent);
     console.log('Installed /visualize skill');
   } catch (err) {
     console.warn('Could not install skill:', err.message);
