@@ -9,7 +9,9 @@ const PKG_ROOT = join(__dirname, '..');
 
 const command = process.argv[2] || 'start';
 
-if (command === 'init') {
+if (command === 'install') {
+  await runInstall();
+} else if (command === 'init') {
   await runInit();
 } else if (command === 'launch') {
   await runLaunch();
@@ -18,7 +20,6 @@ if (command === 'init') {
 } else if (command === 'help' || command === '--help' || command === '-h') {
   printHelp();
 } else {
-  // Treat as target directory path
   await runStart(command);
 }
 
@@ -27,11 +28,10 @@ function printHelp() {
 codebase-visualizer — Understand your codebase visually
 
 Usage:
-  npx codebase-visualizer              Analyze current directory and start viewer
-  npx codebase-visualizer [path]       Analyze a specific project directory
-  npx codebase-visualizer launch       Open the launcher GUI (pick folder, set API key)
-  npx codebase-visualizer init         Add CLAUDE.md instructions for auto-opening in Claude Code
-  npx codebase-visualizer help         Show this help
+  codebase-visualizer install           Install /visualize skill globally (works in all projects)
+  codebase-visualizer init             Set up current project for auto-visualization
+  codebase-visualizer [path]           Analyze and start viewer
+  codebase-visualizer help             Show this help
 
 Options:
   ANTHROPIC_API_KEY=sk-...             Your Claude API key (enables AI features)
@@ -40,6 +40,61 @@ Options:
 AI features (file descriptions, Q&A) require your own Anthropic API key.
 Get one at: https://console.anthropic.com/settings/keys
 `);
+}
+
+async function runInstall() {
+  const home = process.env.HOME;
+  const globalSkillDir = join(home, '.claude', 'skills', 'visualize');
+  await mkdir(globalSkillDir, { recursive: true });
+
+  const prepareBin = join(PKG_ROOT, 'bin', 'prepare.mjs');
+  const serveBin = join(PKG_ROOT, 'bin', 'serve.mjs');
+  const analyzeBin = join(PKG_ROOT, 'scripts', 'analyze.mjs');
+  const viewerDir = join(PKG_ROOT, 'viewer', 'dist');
+
+  // Write SKILL.md with all paths baked in
+  const skillContent = `---
+name: visualize
+description: Show an interactive codebase diagram in the preview panel. Analyzes the current project automatically.
+allowed-tools: Bash(node *) Bash(lsof *) Bash(kill *) Bash(mkdir *) Bash(echo *)
+---
+
+# Visualize Codebase
+
+Show an interactive architecture diagram in the preview panel.
+
+## Steps
+
+### 1. Free port 3001
+
+\`\`\`bash
+lsof -ti:3001 | xargs kill -9 2>/dev/null; echo "ready"
+\`\`\`
+
+### 2. Analyze and prepare
+
+\`\`\`bash
+node ${prepareBin}
+\`\`\`
+
+This analyzes the current project, writes graph data to /tmp, and creates .claude/launch.json.
+
+### 3. Open in preview panel
+
+Use preview_start with configuration name "visualizer" to show the diagram in the preview panel.
+`;
+
+  await writeFile(join(globalSkillDir, 'SKILL.md'), skillContent);
+
+  // Copy prepare.mjs into skill dir as self-contained fallback
+  const prepareContent = await readFile(prepareBin, 'utf-8');
+  await writeFile(join(globalSkillDir, 'prepare.mjs'), prepareContent);
+
+  console.log('Installed /visualize skill globally');
+  console.log(`Location: ${globalSkillDir}`);
+  console.log('\nNow in any project in Claude Code Desktop, just type:');
+  console.log('  visualize');
+  console.log('\nThe diagram will appear in the preview panel.');
 }
 
 async function runInit() {
