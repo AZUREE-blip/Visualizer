@@ -7,10 +7,9 @@ interface PromptPanelProps {
 }
 
 export function PromptPanel({ answers, compact }: PromptPanelProps) {
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [hidden, setHidden] = useState(false);
 
-  const visible = answers.filter(a => !dismissed.has(a.id));
-  if (visible.length === 0) return null;
+  if (hidden || answers.length === 0) return null;
 
   return (
     <div
@@ -35,13 +34,13 @@ export function PromptPanel({ answers, compact }: PromptPanelProps) {
           Answers
         </div>
         <button
-          onClick={() => setDismissed(new Set(answers.map(a => a.id)))}
+          onClick={() => setHidden(true)}
           style={{ background: 'none', border: 'none', color: 'hsl(0 0% 30%)', cursor: 'pointer', fontSize: '14px', padding: '0 4px' }}
         >
           {'\u00D7'}
         </button>
       </div>
-      {visible.map((a) => (
+      {answers.map((a) => (
         <div key={a.id} style={{
           padding: compact ? '8px 10px' : '12px',
           background: a.error ? 'hsl(0 10% 8%)' : 'hsl(0 0% 8%)',
