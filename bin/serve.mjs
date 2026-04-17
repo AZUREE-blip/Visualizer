@@ -63,8 +63,14 @@ const server = createServer(async (req, res) => {
       const graph = JSON.parse(await readFile(join(dataDir, 'graph.json'), 'utf-8'));
       const node = graph.nodes.find(n => n.id === id);
       if (!node) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end('{"error":"Node not found"}'); return; }
-      const dependencies = graph.edges.filter(e => e.source === id).map(e => graph.nodes.find(n => n.id === e.target)).filter(Boolean);
-      const dependents = graph.edges.filter(e => e.target === id).map(e => graph.nodes.find(n => n.id === e.source)).filter(Boolean);
+      const dependencies = graph.edges.filter(e => e.source === id).map(e => {
+        const t = graph.nodes.find(n => n.id === e.target);
+        return t ? { id: t.id, label: t.label, type: t.type, layer: t.layer, description: t.description || '', symbols: e.symbols || [] } : null;
+      }).filter(Boolean);
+      const dependents = graph.edges.filter(e => e.target === id).map(e => {
+        const s = graph.nodes.find(n => n.id === e.source);
+        return s ? { id: s.id, label: s.label, type: s.type, layer: s.layer, description: s.description || '', symbols: e.symbols || [] } : null;
+      }).filter(Boolean);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ node, content: null, dependencies, dependents }));
     } catch {
