@@ -90,8 +90,27 @@ const server = createServer(async (req, res) => {
         const s = graph.nodes.find(n => n.id === e.source);
         return s ? { id: s.id, label: s.label, type: s.type, layer: s.layer, description: s.description || '', symbols: e.symbols || [] } : null;
       }).filter(Boolean);
+      // Try reading full file, fall back to snippet
+      let content = null;
+      if (node.filePath && graph.meta?.rootDir) {
+        try { content = await readFile(join(graph.meta.rootDir, node.filePath), 'utf-8'); } catch {}
+      }
+      if (!content && node.type === 'module' && node.children?.length) {
+        // Aggregate child previews for modules
+        const parts = [];
+        for (const cid of node.children.slice(0, 6)) {
+          const child = graph.nodes.find(n => n.id === cid);
+          if (!child?.filePath) continue;
+          let src = null;
+          try { src = await readFile(join(graph.meta.rootDir, child.filePath), 'utf-8'); } catch {}
+          const preview = src ? src.split('\n').slice(0, 40).join('\n') : child.snippet;
+          if (preview) parts.push(`// === ${child.filePath} ===\n${preview}\n`);
+        }
+        if (parts.length) content = parts.join('\n');
+      }
+      content = content || node.snippet || null;
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ node, content: node.snippet || null, dependencies, dependents }));
+      res.end(JSON.stringify({ node, content, dependencies, dependents }));
     } catch {
       res.writeHead(404, { 'Content-Type': 'application/json' }); res.end('{"error":"No data"}');
     }
@@ -165,22 +184,28 @@ wss.on('connection', (ws) => {
       const deps = graph.edges.filter(e => e.source === nodeId).map(e => graph.nodes.find(n => n.id === e.target)).filter(Boolean);
       const dependents = graph.edges.filter(e => e.target === nodeId).map(e => graph.nodes.find(n => n.id === e.source)).filter(Boolean);
 
-      // Build context — for modules, aggregate child file snippets
+      // Read full file from disk (falls back to snippet)
+      async function readSource(filePath) {
+        if (!filePath || !graph.meta?.rootDir) return null;
+        try { return await readFile(join(graph.meta.rootDir, filePath), 'utf-8'); } catch { return null; }
+      }
+
       let context = '';
       if (node.type === 'module' && node.children?.length) {
         const children = node.children.map(cid => graph.nodes.find(n => n.id === cid)).filter(Boolean);
         context = `## Module: ${node.label} (${children.length} files)\n\n`;
         for (const child of children.slice(0, 5)) {
+          const src = await readSource(child.filePath);
           context += `### ${child.filePath} (${child.type}, ${child.linesOfCode}L)\n`;
           if (child.description) context += `${child.description}\n`;
           if (child.exports?.length) context += `Exports: ${child.exports.join(', ')}\n`;
-          if (child.snippet) context += `\`\`\`\n${child.snippet.slice(0, 500)}\n\`\`\`\n`;
-          context += '\n';
+          context += `\`\`\`\n${src || child.snippet || '(no source)'}\n\`\`\`\n\n`;
         }
       } else {
+        const src = await readSource(node.filePath);
         context = `## File: ${node.filePath}\nType: ${node.type}, Layer: ${node.layer}, ${node.linesOfCode} lines\n`;
         if (node.exports?.length) context += `Exports: ${node.exports.join(', ')}\n`;
-        if (node.snippet) context += `\n\`\`\`\n${node.snippet}\n\`\`\`\n`;
+        context += `\n\`\`\`\n${src || node.snippet || '(no source)'}\n\`\`\`\n`;
       }
       if (deps.length) context += `\nDepends on: ${deps.map(d => d.label).join(', ')}`;
       if (dependents.length) context += `\nUsed by: ${dependents.map(d => d.label).join(', ')}`;
