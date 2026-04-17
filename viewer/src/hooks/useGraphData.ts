@@ -129,6 +129,8 @@ export function useGraphData(hiddenLayers: Set<LayerType>, searchQuery: string, 
           linesOfCode: meta.linesOfCode,
           fileCount: meta.fileCount,
           importance: meta.fileCount >= 5 ? 3 : 2,
+          childLabels: meta.children.map(c => c.label),
+          childDescriptions: meta.children.map(c => (c as any).description || ''),
         },
       });
 

@@ -46,33 +46,73 @@ export function ModuleNode({ data }: { data: NodeData }) {
   const lc = data.layerColor || getLayerColor(data.layer);
   const files = data.fileCount || 0;
   const isRoot = data.importance === 3;
+  const childLabels = (data.childLabels || []) as string[];
+  const childDescs = (data.childDescriptions || []) as string[];
 
   return (
     <div style={{
       position: 'relative',
       opacity: opacity(data),
-      background: isRoot ? 'hsl(0 0% 12%)' : lc.bg,
+      background: isRoot ? 'hsl(0 0% 10%)' : lc.bg,
       border: border(data),
       borderRadius: isRoot ? '14px' : '10px',
-      padding: isRoot ? '18px 28px' : '12px 18px',
-      minWidth: isRoot ? '180px' : '120px',
+      padding: isRoot ? '18px 28px' : '14px 18px',
+      minWidth: isRoot ? '200px' : '160px',
+      maxWidth: '260px',
       cursor: 'pointer',
       transition: 'opacity 0.25s ease',
-      textAlign: 'center',
     }}>
       <Handle type="target" position={Position.Top} style={{ ...hHidden, top: -2 }} />
-      <div style={{
-        fontSize: isRoot ? '18px' : '14px',
-        fontWeight: 600,
-        color: isRoot ? 'hsl(0 0% 90%)' : lc.text,
-      }}>
-        {data.label}
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: childLabels.length > 0 ? '8px' : 0 }}>
+        <div style={{
+          width: '8px', height: '8px', borderRadius: '50%',
+          background: isRoot ? 'hsl(0 0% 50%)' : lc.dot,
+          flexShrink: 0,
+        }} />
+        <div>
+          <div style={{
+            fontSize: isRoot ? '16px' : '13px',
+            fontWeight: 700,
+            color: isRoot ? 'hsl(0 0% 93%)' : lc.text,
+            letterSpacing: '-0.01em',
+          }}>
+            {data.label}
+          </div>
+          <div style={{ fontSize: '10px', color: 'hsl(0 0% 40%)', marginTop: '1px' }}>
+            {files > 0 ? `${files} files` : ''}{data.linesOfCode > 0 ? ` · ${data.linesOfCode}L` : ''}{data.layer !== 'logic' ? ` · ${data.layer}` : ''}
+          </div>
+        </div>
       </div>
-      {files > 0 && (
-        <div style={{ fontSize: '11px', color: 'hsl(0 0% 45%)', marginTop: '2px' }}>
-          {files} files
+
+      {/* Child file list inside the node */}
+      {childLabels.length > 0 && (
+        <div style={{
+          borderTop: `1px solid ${isRoot ? 'hsl(0 0% 16%)' : lc.border}`,
+          paddingTop: '6px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '3px',
+        }}>
+          {childLabels.slice(0, 6).map((label, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+              <span style={{ fontSize: '10px', color: 'hsl(0 0% 55%)', fontWeight: 500 }}>{label}</span>
+              {childDescs[i] && (
+                <span style={{ fontSize: '9px', color: 'hsl(0 0% 35%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>
+                  {childDescs[i]}
+                </span>
+              )}
+            </div>
+          ))}
+          {childLabels.length > 6 && (
+            <div style={{ fontSize: '9px', color: 'hsl(0 0% 30%)' }}>
+              +{childLabels.length - 6} more
+            </div>
+          )}
         </div>
       )}
+
       <Handle type="source" position={Position.Bottom} style={{ ...hHidden, bottom: -2 }} />
     </div>
   );
