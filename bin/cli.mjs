@@ -31,7 +31,11 @@ Usage:
   npx codebase-visualizer help         Show this help
 
 Options:
+  ANTHROPIC_API_KEY=sk-...             Your Claude API key (enables AI features)
   PORT=3001                            Set server port (env var)
+
+AI features (file descriptions, Q&A) require your own Anthropic API key.
+Get one at: https://console.anthropic.com/settings/keys
 `);
 }
 
@@ -67,8 +71,18 @@ ${marker}
     console.log('Created CLAUDE.md with visualizer instructions');
   }
 
+  // Create .env with placeholder if it doesn't exist
+  const envPath = join(cwd, '.env');
+  try {
+    await access(envPath);
+  } catch {
+    await writeFile(envPath, '# Get your key at https://console.anthropic.com/settings/keys\nANTHROPIC_API_KEY=\n');
+    console.log('Created .env — add your ANTHROPIC_API_KEY there for AI features');
+  }
+
   console.log('\nDone! When you open this project in Claude Code Desktop,');
   console.log('the visualizer will automatically start and open in the preview panel.');
+  console.log('\nFor AI features (descriptions, Q&A), add your Anthropic API key to .env');
 }
 
 async function runStart(targetPath) {
@@ -96,6 +110,12 @@ async function runStart(targetPath) {
   console.log(`Codebase Visualizer`);
   console.log(`Target: ${targetDir}`);
   console.log(`Data:   ${dataDir}`);
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.log('\nNote: No ANTHROPIC_API_KEY found. The graph will work but AI');
+    console.log('features (descriptions, Q&A) are disabled. Add your key to .env');
+    console.log('or set it: ANTHROPIC_API_KEY=sk-... codebase-visualizer');
+  }
   console.log('');
 
   const { startServer } = await import('../server/index.mjs');
