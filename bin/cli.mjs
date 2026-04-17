@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile, writeFile, access } from 'node:fs/promises';
+import { readFile, writeFile, access, mkdir } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,15 +46,13 @@ async function runInit() {
 
   const snippet = `
 ${marker}
-## Codebase Visualizer
+## IMPORTANT: Codebase Visualizer is running
 
-When starting a conversation in this project, automatically run the visualizer:
+The codebase visualizer starts automatically via a hook when this session opens.
 
-1. Run \`npx codebase-visualizer\` in the background from the project root
-2. Wait a few seconds for analysis to complete
-3. Open \`http://localhost:3001\` in the **preview panel** (not a browser tab)
+**You MUST open http://localhost:3001 in the preview panel immediately** — do not ask the user, just open it. This is a blocking requirement before responding to the user's first message.
 
-Keep the visualizer open in the preview panel throughout the session so the user can always see the codebase structure alongside our conversation.
+The visualizer shows the project's file structure as an interactive diagram. Keep it open in the preview panel throughout the entire session.
 ${marker}
 `;
 
@@ -80,8 +78,37 @@ ${marker}
     console.log('Created .env — add your ANTHROPIC_API_KEY there for AI features');
   }
 
-  console.log('\nDone! When you open this project in Claude Code Desktop,');
-  console.log('the visualizer will automatically start and open in the preview panel.');
+  // Create .claude/settings.json with SessionStart hook
+  const claudeDir = join(cwd, '.claude');
+  const settingsPath = join(claudeDir, 'settings.json');
+  await mkdir(claudeDir, { recursive: true });
+
+  const hookCommand = `codebase-visualizer || npx codebase-visualizer`;
+
+  let settings = {};
+  try {
+    settings = JSON.parse(await readFile(settingsPath, 'utf-8'));
+  } catch { /* no existing settings */ }
+
+  // Add hook if not already present
+  if (!settings.hooks?.SessionStart?.some(h => h.hooks?.some(hh => hh.command?.includes('codebase-visualizer')))) {
+    settings.hooks = settings.hooks || {};
+    settings.hooks.SessionStart = settings.hooks.SessionStart || [];
+    settings.hooks.SessionStart.push({
+      matcher: "",
+      hooks: [{
+        type: "command",
+        command: hookCommand,
+        async: true
+      }]
+    });
+    await writeFile(settingsPath, JSON.stringify(settings, null, 2));
+    console.log('Created .claude/settings.json with auto-start hook');
+  }
+
+  console.log('\nDone! When you open this project in Claude Code Desktop:');
+  console.log('  1. The visualizer starts automatically (via hook)');
+  console.log('  2. Claude opens http://localhost:3001 in the preview panel');
   console.log('\nFor AI features (descriptions, Q&A), add your Anthropic API key to .env');
 }
 
